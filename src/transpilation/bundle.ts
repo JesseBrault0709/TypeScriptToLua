@@ -44,7 +44,7 @@ export function getBundleResult(
     const entryModule = cast(options.luaBundleEntry, isNonNull);
 
     const rootDir = program.getCommonSourceDirectory();
-    const outDir = options.outDir ?? rootDir;
+    // const outDir = options.outDir ?? rootDir;
     const projectRootDir = options.configFilePath
         ? path.dirname(options.configFilePath)
         : emitHost.getCurrentDirectory();
@@ -59,13 +59,13 @@ export function getBundleResult(
     }
 
     // For each file: ["<module path>"] = function() <lua content> end,
-    const moduleTableEntries = files.map(f => moduleSourceNode(f, createModulePath(outDir, f.fileName)));
+    const moduleTableEntries = files.map(f => moduleSourceNode(f, createModulePath(rootDir, f.fileName)));
 
     // Create ____modules table containing all entries from moduleTableEntries
     const moduleTable = createModuleTableNode(moduleTableEntries);
 
     // return require("<entry module path>")
-    const entryPoint = `return require(${createModulePath(outDir, resolvedEntryModule)})\n`;
+    const entryPoint = `return require(${createModulePath(rootDir, resolvedEntryModule)})\n`;
 
     const bundleNode = joinSourceChunks([requireOverride, moduleTable, entryPoint]);
     const { code, map } = bundleNode.toStringWithSourceMap();
