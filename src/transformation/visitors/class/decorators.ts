@@ -38,6 +38,6 @@ export function createConstructorDecorationStatement(
 
     return lua.createAssignmentStatement(
         className,
-        transformLuaLibFunction(context, LuaLibFeature.Decorate, undefined, decoratorTable, className)
+        transformLuaLibFunction(context, LuaLibFeature.DecorateClass, undefined, decoratorTable, className)
     );
 }

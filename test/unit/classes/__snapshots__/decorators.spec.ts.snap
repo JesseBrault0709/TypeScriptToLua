@@ -10,7 +10,7 @@ function ____exports.__main(self)
     TestClass.name = \\"TestClass\\"
     function TestClass.prototype.____constructor(self)
     end
-    TestClass = __TS__Decorate({decorator}, TestClass)
+    TestClass = __TS__DecorateClass({decorator}, TestClass)
 end
 return ____exports"
 `;

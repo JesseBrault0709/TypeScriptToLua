@@ -283,10 +283,11 @@ function transformClassLikeDeclaration(
     }
 
     // Transform methods
+
     result.push(
         ...classDeclaration.members
             .filter(ts.isMethodDeclaration)
-            .map(m => transformMethodDeclaration(context, m, localClassName, isExtension || isMetaExtension))
+            .flatMap(m => transformMethodDeclaration(context, m, localClassName, isExtension || isMetaExtension))
             .filter(isNonNull)
     );
 
