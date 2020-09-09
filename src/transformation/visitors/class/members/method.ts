@@ -6,6 +6,31 @@ import { transformPropertyName } from "../../literal";
 import { isStaticNode } from "../utils";
 import { transformLuaLibFunction, LuaLibFeature } from "../../../utils/lualib";
 
+/**
+ * Transforms the given decorators to lua expressions.
+ * 
+ * 
+ * @param context The context
+ * @param decorators The decorators to transform
+ * @returns An array of lua expressions representing the decorators as they appear in the source.
+ */
+function decoratorsToExpressions(context: TransformationContext, ...decorators: ts.Decorator[]): lua.Expression[] {
+    return decorators.map(decorator => decorator.expression).map(decExpr => context.transformExpression(decExpr))
+}
+
+/**
+ * Takes the given expressions and creates a table expression whose fields
+ * represent the given expressions.
+ * 
+ * @param expressions The expressions to put in the table.
+ * @returns A table expression of the generated table.
+ */
+function expressionsToTableExpr(...expressions: lua.Expression[]): lua.TableExpression {
+    return lua.createTableExpression(
+        expressions.map(expr => lua.createTableFieldExpression(expr))
+    )
+}
+
 export function transformMethodDeclaration(
     context: TransformationContext,
     node: ts.MethodDeclaration,
@@ -35,15 +60,16 @@ export function transformMethodDeclaration(
 
     result.push(lua.createAssignmentStatement(qualifiedMethodIdentifier, functionExpression, node));
 
+
+    // decorate method
+
     if (node.decorators) {
-        const decoratorExpressions: lua.Expression[] = node.decorators
-            .map(dec => dec.expression)
-            .map(expr => context.transformExpression(expr));
+        const decoratorTable: lua.TableExpression = expressionsToTableExpr(
+            ...decoratorsToExpressions(context, ...node.decorators)
+        )
 
-        const decoratorTable: lua.TableExpression = lua.createTableExpression(
-            decoratorExpressions.map(decoratorExpression => lua.createTableFieldExpression(decoratorExpression))
-        );
-
+        // create a faux descriptor. this is not saved by the lualib and is only
+        // for the purpose of passing a descriptor to the decorator(s)
         const descriptor = lua.createTableExpression([
             lua.createTableFieldExpression(qualifiedMethodIdentifier, lua.createStringLiteral("value")),
         ]);
@@ -51,6 +77,8 @@ export function transformMethodDeclaration(
         result.push(
             lua.createAssignmentStatement(
                 qualifiedMethodIdentifier,
+
+                // see https://www.typescriptlang.org/docs/handbook/decorators.html#method-decorators
                 transformLuaLibFunction(
                     context,
                     LuaLibFeature.DecorateMethod,
@@ -62,6 +90,38 @@ export function transformMethodDeclaration(
                 )
             )
         );
+    }
+
+    // decorate parameters
+
+    if (node.parameters) {
+
+        // use for loop since we need the index of the parameter
+        for (let paramIndex: number = 0; paramIndex < node.parameters.length; paramIndex++) {
+            const parameterDecl = node.parameters[paramIndex]
+            if (parameterDecl.decorators) {
+
+                const decoratorTable: lua.TableExpression = expressionsToTableExpr(
+                    ...decoratorsToExpressions(context, ...parameterDecl.decorators)
+                )
+
+                // see https://www.typescriptlang.org/docs/handbook/decorators.html#parameter-decorators
+                const decorateParamCall = transformLuaLibFunction(
+                    context,
+                    LuaLibFeature.DecorateParameter,
+                    undefined,
+                    decoratorTable,
+                    methodTable,
+                    methodName,
+                    lua.createNumericLiteral(paramIndex + 1) // + 1 because lua counts from 1, not zero
+                )
+
+                result.push(
+                    lua.createExpressionStatement(decorateParamCall)
+                )
+            }
+        }
+
     }
 
     return result;
