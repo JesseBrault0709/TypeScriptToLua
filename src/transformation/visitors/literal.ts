@@ -15,10 +15,8 @@ import { flattenSpreadExpressions } from "./call";
 export function transformPropertyName(context: TransformationContext, node: ts.PropertyName): lua.Expression {
     if (ts.isComputedPropertyName(node)) {
         return context.transformExpression(node.expression);
-    } else if (ts.isIdentifier(node)) {
+    } else if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) {
         return lua.createStringLiteral(node.text);
-    } else if (ts.isPrivateIdentifier(node)) {
-        throw new Error("PrivateIdentifier is not supported");
     } else {
         return context.transformExpression(node);
     }
